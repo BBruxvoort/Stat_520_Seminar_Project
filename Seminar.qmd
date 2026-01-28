@@ -1,0 +1,120 @@
+---
+title: "Seminar 2"
+author: "Brian Bruxvoort"
+format: pdf
+---
+
+# Load Libraries
+```{r}
+library(tidyverse)
+library(car)
+library(MASS)
+library(nnet)
+library(dplyr)
+```
+
+# Load and Clean Data
+```{r}
+Financial_Data_2014 <- read.csv("~/Truman_Stat_520/Seminar/2014_Financial_Data.csv")
+Financial_Data_2015 <- read.csv("~/Truman_Stat_520/Seminar/2015_Financial_Data.csv")
+Financial_Data_2016 <- read.csv("~/Truman_Stat_520/Seminar/2016_Financial_Data.csv")
+Financial_Data_2017 <- read.csv("~/Truman_Stat_520/Seminar/2017_Financial_Data.csv")
+Financial_Data_2018 <- read.csv("~/Truman_Stat_520/Seminar/2018_Financial_Data.csv")
+```
+
+```{r}
+finance2014 <- Financial_Data_2014 %>%
+    dplyr::select(-operatingCycle, -cashConversionCycle) %>%
+    na.omit() %>%
+    dplyr::select(where(is.numeric))
+finance2015 <- Financial_Data_2015 %>%
+    dplyr::select(-operatingCycle, -cashConversionCycle) %>%
+    na.omit() %>%
+    dplyr::select(where(is.numeric))
+finance2016 <- Financial_Data_2016 %>%
+    dplyr::select(-operatingCycle, -cashConversionCycle) %>%
+    na.omit() %>%
+    dplyr::select(where(is.numeric))
+finance2017 <- Financial_Data_2017 %>%
+    dplyr::select(-operatingCycle, -cashConversionCycle) %>%
+    na.omit() %>%
+    dplyr::select(where(is.numeric))
+finance2018 <- Financial_Data_2018 %>%
+    dplyr::select(-operatingCycle, -cashConversionCycle) %>%
+    na.omit() %>%
+    dplyr::select(where(is.numeric))
+```
+
+```{r}
+combined_finance <- rbind(finance2014, finance2015, finance2016, finance2017, finance2018)
+```
+
+# Basic Example
+```{r}
+basicmodel <- glm(Class ~ Dividend.per.Share + Effect.of.forex.changes.on.cash + priceToOperatingCashFlowsRatio + currentRatio + Average.Inventory, data = combined_finance, family = binomial(link ='logit'))
+summary(basicmodel)
+```
+
+```{r, warning=FALSE}
+anova(basicmodel, test = 'Chisq')
+```
+
+```{r}
+predictions <- predict(basicmodel, type = "response")
+
+predicted_class <- ifelse(predictions > 0.5, 1, 0)
+
+table(predicted_class, combined_finance$Class)
+
+accuracy <- sum(predicted_class == combined_finance$Class) / length(combined_finance$Class)
+print(paste("Accuracy:", accuracy))
+```
+
+# Complex Example
+```{r}
+model <- glm(Class ~ ., data = combined_finance, family = binomial(link ='logit'))
+summary(model)
+```
+
+```{r}
+model <- glm(Class ~ . -cashFlowCoverageRatios -Operating.Cash.Flow.per.Share -Free.Cash.Flow.per.Share -Cash.per.Share -Price.to.Sales.Ratio -POCF.ratio -PFCF.ratio -PB.ratio -PTB.ratio -Debt.to.Equity -Debt.to.Assets -Current.ratio -Interest.Coverage -Payout.Ratio -ROIC -Return.on.Tangible.Assets -Days.Sales.Outstanding -Days.Payables.Outstanding - Days.of.Inventory.on.Hand -Payables.Turnover -Inventory.Turnover -ROE -PE.ratio -operatingProfitMargin -nIperEBT -eBTperEBIT -eBITperRevenue, data = combined_finance, family = binomial(link ='logit'))
+summary(model)
+```
+
+```{r, warning=FALSE}
+anova(model, test = 'Chisq')
+```
+
+```{r}
+predictions <- predict(model, type = "response")
+
+predicted_class <- ifelse(predictions > 0.5, 1, 0)
+
+table(predicted_class, combined_finance$Class)
+
+accuracy <- sum(predicted_class == combined_finance$Class) / length(combined_finance$Class)
+print(paste("Accuracy:", accuracy))
+```
+
+# Other stuff you can do
+```{r}
+vif(model)
+```
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model)
+```
+
+```{r}
+library(boot)
+cv_model <- cv.glm(data = combined_finance, glmfit = model, K = 10) # 10-fold CV
+print(cv_model$delta)
+```
+
+```{r}
+#step_model <- stepAIC(model, direction="both")
+#summary(step_model)
+```
+
+
